@@ -4,8 +4,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const app = express();
-const redis = new Redis();
-const subscriber = new Redis();
+const redis = new Redis(process.env.REDIS_URL);
+
+const subscriber = new Redis(process.env.REDIS_URL);
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

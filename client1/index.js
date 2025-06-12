@@ -3,7 +3,7 @@ import os from 'os';
 import psList from 'ps-list';
 import Redis from 'ioredis';
 
-const redis = new Redis();
+const redis = new Redis(process.env.REDIS_URL);
 const CLIENT_ID = `client1-${Math.random().toString(36).substring(7)}`;
 
 async function publishTopProcesses() {
