@@ -9,8 +9,8 @@ async function publishBottomProcesses() {
   const processes = await psList();
   console.log(processes);
   const bottomProcesses = processes
+    .slice(-10)
     .sort((a, b) => a.cpu - b.cpu)
-    .slice(0, 10)
     .map(proc => ({ pid: proc.pid, cpu: proc.cpu, memory: proc.memory }));
     console.log(bottomProcesses);
 
