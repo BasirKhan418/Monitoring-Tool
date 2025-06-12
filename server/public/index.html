@@ -4,20 +4,288 @@
   <meta charset="UTF-8">
   <title>Client Monitor</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #2c3e50;
+      font-size: 2.5rem;
+      font-weight: 300;
+      position: relative;
+    }
+
+    h1::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 2px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+
+    #client-select {
+      padding: 12px 20px;
+      font-size: 16px;
+      border: 2px solid #e1e8ed;
+      border-radius: 12px;
+      background: white;
+      color: #2c3e50;
+      min-width: 250px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    }
+
+    #client-select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    #client-select:hover {
+      border-color: #667eea;
+      transform: translateY(-1px);
+    }
+
+    .stats-section {
+      margin-bottom: 40px;
+    }
+
+    .section-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 2px;
+      margin-right: 12px;
+    }
+
+    #stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      margin-bottom: 30px;
+    }
+
+    #stats-table thead {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
+
+    #stats-table th,
+    #stats-table td {
+      padding: 16px 20px;
+      text-align: left;
+      border: none;
+    }
+
+    #stats-table th {
+      font-weight: 600;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    #stats-table tbody tr {
+      transition: all 0.3s ease;
+      border-bottom: 1px solid #f8f9fa;
+    }
+
+    #stats-table tbody tr:hover {
+      background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+      transform: translateX(2px);
+    }
+
+    #stats-table tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    #stats-table td {
+      font-weight: 500;
+      color: #2c3e50;
+    }
+
+    .chart-container {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chart-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+
+    #cpuChart {
+      max-height: 400px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #7f8c8d;
+      font-style: italic;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #27ae60;
+      border-radius: 50%;
+      margin-left: 10px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    .metric-badges {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .metric-badge {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+      padding: 10px 16px;
+      border-radius: 25px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #667eea;
+      border: 1px solid rgba(102, 126, 234, 0.2);
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px;
+        margin: 10px;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      #client-select {
+        min-width: 200px;
+      }
+
+      #stats-table th,
+      #stats-table td {
+        padding: 12px 15px;
+        font-size: 14px;
+      }
+
+      .chart-container {
+        padding: 15px;
+      }
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #5a67d8, #6b46c1);
+    }
+  </style>
 </head>
 <body>
-  <h1>Real-time Client Monitor</h1>
-  <select id="client-select"></select>
-  <table border="1" id="stats-table">
-    <thead>
-      <tr>
-        <th>PID</th><th>CPU %</th><th>Memory %</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div class="container">
+    <h1>Real-time Client Monitor<span class="status-indicator"></span></h1>
+    
+    <div class="controls">
+      <select id="client-select"></select>
+    </div>
 
-  <canvas id="cpuChart" width="400" height="150"></canvas>
+    <div class="stats-section">
+      <div class="section-title">Process Statistics</div>
+      <table id="stats-table">
+        <thead>
+          <tr>
+            <th>PID</th><th>CPU %</th><th>Memory %</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="stats-section">
+      <div class="section-title">CPU Usage Chart</div>
+      <div class="chart-container">
+        <canvas id="cpuChart" width="400" height="150"></canvas>
+      </div>
+    </div>
+  </div>
 
   <script>
     let cpuChart;
@@ -52,15 +320,52 @@
             datasets: [{
               label: 'CPU Usage %',
               data: cpuData,
-              backgroundColor: 'rgba(75, 192, 192, 0.2)',
-              borderColor: 'rgba(75, 192, 192, 1)',
-              borderWidth: 1
+              backgroundColor: 'rgba(102, 126, 234, 0.2)',
+              borderColor: 'rgba(102, 126, 234, 1)',
+              borderWidth: 2,
+              borderRadius: 4,
+              borderSkipped: false,
             }]
           },
           options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                  font: {
+                    size: 14,
+                    weight: '600'
+                  },
+                  color: '#2c3e50'
+                }
+              }
+            },
             scales: {
               y: {
-                beginAtZero: true
+                beginAtZero: true,
+                grid: {
+                  color: 'rgba(0, 0, 0, 0.05)'
+                },
+                ticks: {
+                  color: '#7f8c8d',
+                  font: {
+                    size: 12
+                  }
+                }
+              },
+              x: {
+                grid: {
+                  display: false
+                },
+                ticks: {
+                  color: '#7f8c8d',
+                  font: {
+                    size: 12
+                  }
+                }
               }
             }
           }
