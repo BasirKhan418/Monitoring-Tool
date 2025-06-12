@@ -9,7 +9,7 @@ async function publishBottomProcesses() {
   const processes = await psList();
   const bottomProcesses = processes
     .slice(-10)
-    .sort((a, b) => a.cpu - b.cpu)
+    .sort((a, b) =>  b.cpu-a.cpu)
     .map(proc => ({ pid: proc.pid, cpu: proc.cpu, memory: proc.memory }));
 
   await redis.publish('stats-channel', JSON.stringify({
