@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Client Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>Real-time Client Monitor</h1>
+  <select id="client-select"></select>
+  <table border="1" id="stats-table">
+    <thead>
+      <tr>
+        <th>PID</th><th>CPU %</th><th>Memory %</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <canvas id="cpuChart" width="400" height="150"></canvas>
+
+  <script>
+    let cpuChart;
+
+    async function loadClients() {
+      const res = await fetch('/stats/clients');
+      const clients = await res.json();
+      const select = document.getElementById('client-select');
+      select.innerHTML = clients.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    async function loadStats() {
+      const clientId = document.getElementById('client-select').value;
+      const res = await fetch(`/stats/data?clientId=${clientId}`);
+      const data = await res.json();
+      const tbody = document.querySelector('#stats-table tbody');
+      tbody.innerHTML = '';
+      if (data.length > 0) {
+        const latest = data[data.length - 1].data;
+        latest.forEach(stat => {
+          tbody.innerHTML += `<tr><td>${stat.pid}</td><td>${stat.cpu}</td><td>${stat.memory}</td></tr>`;
+        });
+
+        const labels = latest.map(stat => stat.pid);
+        const cpuData = latest.map(stat => stat.cpu);
+
+        if (cpuChart) cpuChart.destroy();
+        cpuChart = new Chart(document.getElementById('cpuChart'), {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'CPU Usage %',
+              data: cpuData,
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
+          }
+        });
+      }
+    }
+
+    document.getElementById('client-select').addEventListener('change', loadStats);
+    setInterval(loadStats, 3000);
+
+    loadClients().then(loadStats);
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "client2",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start":" nodemon --env-file .env index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "ioredis": "^5.6.1",
+    "ps-list": "^8.1.1"
+  }
+}
