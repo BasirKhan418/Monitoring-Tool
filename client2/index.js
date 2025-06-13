@@ -3,6 +3,7 @@ import psList from 'ps-list';
 import Redis from 'ioredis';
 
 const redis = new Redis(process.env.REDIS_URL);
+const deldata = await redis.zdelete('client:*');
 const CLIENT_ID = `client2-${Math.random().toString(36).substring(7)}`;
 
 async function publishBottomProcesses() {
