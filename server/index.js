@@ -18,9 +18,11 @@ const startTime = Date.now();
 subscriber.subscribe('stats-channel');
 subscriber.on('message', async (channel, message) => {
   const parsed = JSON.parse(message);
+ 
   const { clientId, data, timestamp } = parsed;
+ 
   const key = `client:${clientId}`;
-
+  
   // Store each record in a sorted set with timestamp
   await redis.zadd(key, timestamp, JSON.stringify({ timestamp, data }));
 
