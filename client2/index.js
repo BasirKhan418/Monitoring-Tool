@@ -7,6 +7,8 @@ import amqp  from 'amqplib';
 const CLIENT_ID = `client2-${Math.random().toString(36).substring(7)}`;
 //NEW CODE IMPLEMENTATION USING RABITMQ
 const EXCHANGE = 'process-data';
+const RESPONSE_EXCHANGE='client-response';
+
   const conn = await amqp.connect(process.env.RABBITMQ_URL);
   const channel = await conn.createChannel();
   await channel.assertExchange(EXCHANGE, 'fanout', { durable: false });

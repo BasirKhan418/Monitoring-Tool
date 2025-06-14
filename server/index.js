@@ -57,6 +57,7 @@ async function startRabbitConsumer() {
     await redis.zremrangebyscore(key, 0, threshold);
 
     //send data to perticular client
+    // console.log(`Received data for ${clientId} sending response...`);
      channel.publish(RESPONSE_EXCHANGE, clientId, Buffer.from(JSON.stringify({
       message: `Server received ${data.length} processes for ${clientId} at ${new Date(timestamp).toLocaleTimeString()}.`
     })));
