@@ -16,6 +16,7 @@ const __dirname = path.dirname(__filename);
 const startTime = Date.now();
 const EXCHANGE = 'process-data';
 const RESPONSE_EXCHANGE = 'client-response';
+const SERVER_EXCHANGE= 'server-response';
 //prev fanout implemantation using redis
 // // Redis subscription
 // subscriber.subscribe('stats-channel');
@@ -42,9 +43,13 @@ async function startRabbitConsumer() {
   const channel = await conn.createChannel();
   await channel.assertExchange(EXCHANGE, 'fanout', { durable: false });
   await channel.assertExchange(RESPONSE_EXCHANGE, 'direct', { durable: false });
+  await channel.assertExchange(SERVER_EXCHANGE, 'fanout', { durable: false });
 
   const q = await channel.assertQueue('', { exclusive: true });
   await channel.bindQueue(q.queue, EXCHANGE, '');
+  
+  const newq =  await channel.assertQueue('',{exclusive: true});
+  await channel.bindQueue(newq.queue, SERVER_EXCHANGE, '');
 
   channel.consume(q.queue, async (msg) => {
     if (!msg.content) return;
@@ -56,25 +61,20 @@ async function startRabbitConsumer() {
     await redis.zadd(key, timestamp, JSON.stringify({ timestamp, data }));
     await redis.zremrangebyscore(key, 0, threshold);
 
-     const queueName= `response.${clientId}`;
-        await channel.assertQueue(queueName, {
-        exclusive: false,
-        durable: false,
-        autoDelete: true,
-        arguments: {
-          'x-expires': 300000 
-        }
-      });
-    
-      await channel.bindQueue(queueName, RESPONSE_EXCHANGE, clientId);
-    
-      channel.consume(queueName, (msg) => {
-        if (msg) {
-          const res = JSON.parse(msg.content.toString());
-          console.log(`Response for ${clientId}:`, res.message);
-        }
-      }, { noAck: true });
-  
+     channel.publish(RESPONSE_EXCHANGE, clientId, Buffer.from(JSON.stringify({
+      message: `hii ${clientId} whats up ?`
+    })));
+
+    channel.consume(newq.queue, (msg) => {
+      if (msg) {
+        const res = JSON.parse(msg.content.toString());
+        console.log(`🟢 ACK from server:`, res.message);
+      }
+      else{
+        console.log('No message received from server');
+      }
+    }, { noAck: true });
+
   }, { noAck: true });
 }
 
