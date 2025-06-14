@@ -56,11 +56,25 @@ async function startRabbitConsumer() {
     await redis.zadd(key, timestamp, JSON.stringify({ timestamp, data }));
     await redis.zremrangebyscore(key, 0, threshold);
 
-    //send data to perticular client
-    // console.log(`Received data for ${clientId} sending response...`);
-     channel.publish(RESPONSE_EXCHANGE, clientId, Buffer.from(JSON.stringify({
-      message: `Server received ${data.length} processes for ${clientId} at ${new Date(timestamp).toLocaleTimeString()}.`
-    })));
+     const queueName= `response.${clientId}`;
+        await channel.assertQueue(queueName, {
+        exclusive: false,
+        durable: false,
+        autoDelete: true,
+        arguments: {
+          'x-expires': 300000 
+        }
+      });
+    
+      await channel.bindQueue(queueName, RESPONSE_EXCHANGE, clientId);
+    
+      channel.consume(queueName, (msg) => {
+        if (msg) {
+          const res = JSON.parse(msg.content.toString());
+          console.log(`Response for ${clientId}:`, res.message);
+        }
+      }, { noAck: true });
+  
   }, { noAck: true });
 }
 
