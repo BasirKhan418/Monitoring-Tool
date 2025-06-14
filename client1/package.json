@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start":" nodemon --env-file .env index.js"
+    "start": " nodemon --env-file .env index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "amqplib": "^0.10.8",
     "ioredis": "^5.6.1",
     "ps-list": "^8.1.1"
   }
