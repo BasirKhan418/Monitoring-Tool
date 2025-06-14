@@ -1,35 +1,61 @@
 import express from 'express';
 import Redis from 'ioredis';
 import path from 'path';
+import amqp from 'amqplib';
 import { fileURLToPath } from 'url';
 
 const app = express();
 const redis = new Redis(process.env.REDIS_URL);
 
-const subscriber = new Redis(process.env.REDIS_URL);
+// const subscriber = new Redis(process.env.REDIS_URL);
 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const startTime = Date.now();
-
-// Redis subscription
-subscriber.subscribe('stats-channel');
-subscriber.on('message', async (channel, message) => {
-  const parsed = JSON.parse(message);
+//prev fanout implemantation using redis
+// // Redis subscription
+// subscriber.subscribe('stats-channel');
+// subscriber.on('message', async (channel, message) => {
+//   const parsed = JSON.parse(message);
  
-  const { clientId, data, timestamp } = parsed;
+//   const { clientId, data, timestamp } = parsed;
  
-  const key = `client:${clientId}`;
+//   const key = `client:${clientId}`;
   
-  // Store each record in a sorted set with timestamp
-  await redis.zadd(key, timestamp, JSON.stringify({ timestamp, data }));
+//   // Store each record in a sorted set with timestamp
+//   await redis.zadd(key, timestamp, JSON.stringify({ timestamp, data }));
 
-  // Remove old data older than 30 minutes
-  const threshold = Date.now() - 30 * 60 * 1000;
-  await redis.zremrangebyscore(key, 0, threshold);
-});
+//   // Remove old data older than 30 minutes
+//   const threshold = Date.now() - 30 * 60 * 1000;
+//   await redis.zremrangebyscore(key, 0, threshold);
+// });
+
+
+//new implementation using RabbitMQ
+
+async function startRabbitConsumer() {
+  const conn = await amqp.connect(process.env.RABBITMQ_URL);
+  const channel = await conn.createChannel();
+  await channel.assertExchange(EXCHANGE, 'fanout', { durable: false });
+
+  const q = await channel.assertQueue('', { exclusive: true });
+  await channel.bindQueue(q.queue, EXCHANGE, '');
+
+  channel.consume(q.queue, async (msg) => {
+    if (!msg.content) return;
+    const parsed = JSON.parse(msg.content.toString());
+    const { clientId, data, timestamp } = parsed;
+    const key = `client:${clientId}`;
+    const threshold = Date.now() - 30 * 60 * 1000;
+
+    await redis.zadd(key, timestamp, JSON.stringify({ timestamp, data }));
+    await redis.zremrangebyscore(key, 0, threshold);
+  }, { noAck: true });
+}
+
+startRabbitConsumer();
 
 // Serve UI
 app.use(express.static(path.join(__dirname, 'public')));
