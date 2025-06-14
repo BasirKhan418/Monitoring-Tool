@@ -10,6 +10,25 @@ const EXCHANGE = 'process-data';
   const conn = await amqp.connect(process.env.RABBITMQ_URL);
   const channel = await conn.createChannel();
   await channel.assertExchange(EXCHANGE, 'fanout', { durable: false });
+  await channel.assertExchange(RESPONSE_EXCHANGE, 'direct', { durable: false });
+
+   const queueName = `response.${CLIENT_ID}`;
+  await channel.assertQueue(queueName, {
+    exclusive: false,
+    durable: false,
+    autoDelete: true,
+    arguments: {
+      'x-expires': 300000 // auto-delete after 5 min idle
+    }
+  });
+  await channel.bindQueue(queueName, RESPONSE_EXCHANGE, CLIENT_ID);
+
+   channel.consume(queueName, (msg) => {
+    if (msg) {
+      const res = JSON.parse(msg.content.toString());
+      console.log(`🟢 ACK from server:`, res.message);
+    }
+  }, { noAck: true });
 
 async function publishBottomProcesses() {
   const processes = await psList();
@@ -32,6 +51,8 @@ async function publishBottomProcesses() {
     timestamp: Date.now(),
     data: bottomProcesses
   })));
+
+  console.log(`Sent resources stats for ${CLIENT_ID}`)
 }
 
 setInterval(publishBottomProcesses, 3000);

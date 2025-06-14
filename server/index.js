@@ -14,6 +14,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const startTime = Date.now();
+const EXCHANGE = 'process-data';
+const RESPONSE_EXCHANGE = 'client-response';
 //prev fanout implemantation using redis
 // // Redis subscription
 // subscriber.subscribe('stats-channel');
@@ -39,6 +41,7 @@ async function startRabbitConsumer() {
   const conn = await amqp.connect(process.env.RABBITMQ_URL);
   const channel = await conn.createChannel();
   await channel.assertExchange(EXCHANGE, 'fanout', { durable: false });
+  await channel.assertExchange(RESPONSE_EXCHANGE, 'direct', { durable: false });
 
   const q = await channel.assertQueue('', { exclusive: true });
   await channel.bindQueue(q.queue, EXCHANGE, '');
@@ -52,6 +55,11 @@ async function startRabbitConsumer() {
 
     await redis.zadd(key, timestamp, JSON.stringify({ timestamp, data }));
     await redis.zremrangebyscore(key, 0, threshold);
+
+    //send data to perticular client
+     channel.publish(RESPONSE_EXCHANGE, clientId, Buffer.from(JSON.stringify({
+      message: `Server received ${data.length} processes for ${clientId} at ${new Date(timestamp).toLocaleTimeString()}.`
+    })));
   }, { noAck: true });
 }
 

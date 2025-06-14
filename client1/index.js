@@ -6,10 +6,32 @@ import amqp  from 'amqplib';
 // const redis = new Redis(process.env.REDIS_URL);
 const CLIENT_ID = `client1-${Math.random().toString(36).substring(7)}`;
 const EXCHANGE = 'process-data';
+const RESPONSE_EXCHANGE='client-response';
 //NEW CODE IMPLEMENTATION USING RABITMQ
   const conn = await amqp.connect(process.env.RABBITMQ_URL);
   const channel = await conn.createChannel();
   await channel.assertExchange(EXCHANGE, 'fanout', { durable: false });
+  await channel.assertExchange(RESPONSE_EXCHANGE, 'direct', { durable: false });
+
+  //setting serevr send to client
+  const queueName= `response.${CLIENT_ID}`;
+    await channel.assertQueue(queueName, {
+    exclusive: false,
+    durable: false,
+    autoDelete: true,
+    arguments: {
+      'x-expires': 300000 
+    }
+  });
+
+  await channel.bindQueue(queueName, RESPONSE_EXCHANGE, CLIENT_ID);
+
+  channel.consume(queueName, (msg) => {
+    if (msg) {
+      const res = JSON.parse(msg.content.toString());
+      console.log(`🟢 ACK from server:`, res.message);
+    }
+  }, { noAck: true });
 
 async function publishTopProcesses() {
   const processes = await psList();
@@ -32,6 +54,7 @@ async function publishTopProcesses() {
     timestamp: Date.now(),
     data: topProcesses
   })));
+  console.log(`Sent resources stats for ${CLIENT_ID}`)
 }
 
 setInterval(publishTopProcesses, 3000);
